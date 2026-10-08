@@ -1,0 +1,2 @@
+# Defesa adicional: configure o document root EXCLUSIVAMENTE para public/.
+Require all denied
