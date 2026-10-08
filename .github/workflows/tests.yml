@@ -1,0 +1,41 @@
+name: Verificar API
+on:
+  push:
+  pull_request:
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test-only-password
+          MYSQL_DATABASE: repository_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -ptest-only-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql, pdo_sqlite, openssl
+          coverage: none
+      - name: Verificar sintaxe
+        run: find app bin public tests -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Regras de negócio em SQLite
+        run: php tests/run.php
+      - name: API HTTP e painel administrativo
+        run: python3 tests/integration_http.py
+      - name: Regras de negócio e concorrência em MySQL
+        env:
+          TEST_DB_DSN: mysql:host=127.0.0.1;dbname=repository_test;charset=utf8mb4
+          TEST_DB_USER: root
+          TEST_DB_PASSWORD: test-only-password
+        run: |
+          php tests/run.php
+          php tests/concurrency.php
